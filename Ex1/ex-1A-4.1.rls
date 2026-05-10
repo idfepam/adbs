@@ -1,0 +1,47 @@
+% Employee Database Dataset
+% Data imported via CSV resources
+
+@import employee :- csv{resource = "https://dbai.tuwien.ac.at/adbs/datalog/data/employees/employees.csv", format=(int,string,string,string,int,int,int)} .
+@import department :- csv{resource = "https://dbai.tuwien.ac.at/adbs/datalog/data/employees/departments.csv", format=(int,string,int,string)} .
+
+% === Add your rules below ===
+
+% ManagersOfAtLeastOneEmployee = πmanager_id(employee)
+manages_at_least_one_employee(?manager_id) :-
+    employee(?employee_id, ?first_name, ?last_name, ?job_id, ?salary, ?manager_id, ?department_id).
+
+% DepartmentHeads = πmanager_id(department)
+is_department_head(?manager_id) :-
+    department(?department_id, ?department_name, ?manager_id, ?location).
+
+% ManagersWhoAreNotDepartmentHeads = S - DeptHeads
+manages_but_is_not_department_head(?manager_id) :-
+    manages_at_least_one_employee(?manager_id),
+    ~is_department_head(?manager_id).
+
+% Full employee tuples of managers who are not department heads
+eligible_manager_employee(?employee_id, ?first_name, ?last_name, ?job_id, ?salary, ?manager_id, ?department_id) :-
+    employee(?employee_id, ?first_name, ?last_name, ?job_id, ?salary, ?manager_id, ?department_id),
+    manages_but_is_not_department_head(?employee_id).
+
+% Executive department IDs
+executive_department(?department_id) :-
+    department(?department_id, ?department_name, ?department_manager_id, ?location),
+    ?department_name = "Executive".
+
+% Managers who manage at least one employee working in the Executive department
+manages_employee_in_executive(?manager_id) :-
+    employee(?employee_id, ?first_name, ?last_name, ?job_id, ?salary, ?manager_id, ?department_id),
+    executive_department(?department_id).
+
+% Candidate managers that must be excluded
+excluded_manager(?employee_id, ?first_name, ?last_name, ?job_id, ?salary, ?manager_id, ?department_id) :-
+    eligible_manager_employee(?employee_id, ?first_name, ?last_name, ?job_id, ?salary, ?manager_id, ?department_id),
+    manages_employee_in_executive(?employee_id).
+
+% Final result
+result(?employee_id, ?first_name, ?last_name, ?job_id, ?salary, ?manager_id, ?department_id) :-
+    eligible_manager_employee(?employee_id, ?first_name, ?last_name, ?job_id, ?salary, ?manager_id, ?department_id),
+    ~excluded_manager(?employee_id, ?first_name, ?last_name, ?job_id, ?salary, ?manager_id, ?department_id).
+
+@output result .
