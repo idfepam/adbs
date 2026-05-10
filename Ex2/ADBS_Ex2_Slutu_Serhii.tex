@@ -103,24 +103,24 @@ Libraries & libid   & 10 \\
 Result desired at \textbf{Site 4}. Join selectivity: $\tfrac{1}{9500}$.
 
 % -----------------------------------------------------------
-\subsection*{Part (a) — Communication costs without early projection}
+\subsection*{Part (a): Communication costs without early projection}
 % -----------------------------------------------------------
 
 \textbf{Assumptions and cardinality estimates:}
 
-\begin{itemize}[nosep]
-  \item All records and attributes are fixed size.
-  \item Join result size: $|\Authors \join \Books| = |\Authors| \times |\Books| \times \tfrac{1}{9500}
-        = 4000 \times 50000 / 9500 \approx 21{,}053$ rows.
-  \item Result record size (name + title): $58 + 30 = 88$ bytes.
-        Total result size: $21{,}053 \times 88 = 1{,}852{,}664$ bytes.
-  \item Semi-join estimate: $|A \lsj B| = \min\{|A \join B|,\, |A|\}$.
-  \item Communication cost = bytes transferred over the network (local computation is free).
-\end{itemize}
+All records and attributes are fixed size. Communication cost = bytes transferred over the network (local computation is free). Semi-join estimate: $|A \lsj B| = \min\{|A \join B|,\, |A|\}$.
+
+Join result size:
+\[
+  |\Authors \join \Books| = |\Authors| \times |\Books| \times \tfrac{1}{9500}
+  = 4000 \times 50{,}000 \times \tfrac{1}{9500} = \frac{200{,}000{,}000}{9500} \approx 21{,}053 \text{ rows.}
+\]
+
+Result record size (name + title): $58 + 30 = 88$ bytes. Total result size: $21{,}053 \times 88 = 1{,}852{,}664$ bytes.
 
 \medskip
 
-\textbf{Strategy 1 — Send both tables to Site 4, join there:}
+\textbf{Strategy 1: Send both tables to Site 4, join there.}
 \[
   \underbrace{4000 \times 450}_{\Authors \to \text{S4}} +
   \underbrace{50000 \times 400}_{\Books \to \text{S4}}
@@ -129,7 +129,7 @@ Result desired at \textbf{Site 4}. Join selectivity: $\tfrac{1}{9500}$.
 
 \medskip
 
-\textbf{Strategy 2 — Send \Authors\ to Site 2, join there, send result to Site 4:}
+\textbf{Strategy 2: Send \Authors\ to Site 2, join there, send result to Site 4.}
 \[
   \underbrace{4000 \times 450}_{\Authors \to \text{S2}} +
   \underbrace{21{,}053 \times 88}_{\text{result} \to \text{S4}}
@@ -138,7 +138,7 @@ Result desired at \textbf{Site 4}. Join selectivity: $\tfrac{1}{9500}$.
 
 \medskip
 
-\textbf{Strategy 3 — Send \Books\ to Site 1, join there, send result to Site 4:}
+\textbf{Strategy 3: Send \Books\ to Site 1, join there, send result to Site 4.}
 \[
   \underbrace{50000 \times 400}_{\Books \to \text{S1}} +
   \underbrace{21{,}053 \times 88}_{\text{result} \to \text{S4}}
@@ -147,29 +147,18 @@ Result desired at \textbf{Site 4}. Join selectivity: $\tfrac{1}{9500}$.
 
 \medskip
 
-\textbf{Strategy 4 — Semi-join: send \Authors.authid\ to Site 2, filter \Books, ship back to Site 1, join, result to Site 4:}
+\textbf{Strategy 4: Semi-join from Authors to Books.}
 
-\begin{enumerate}[nosep,label=\arabic*.]
-  \item Send $\pi_{\text{authid}}(\Authors)$ from S1 to S2: $4000 \times 12 = 48{,}000$ bytes.
-  \item $\Books \lsj \Authors$: $\min(21{,}053,\, 50{,}000) = 21{,}053$ Books rows survive.
-        Send back to S1: $21{,}053 \times 400 = 8{,}421{,}200$ bytes.
-  \item Full join on S1; send result to S4: $21{,}053 \times 88 = 1{,}852{,}664$ bytes.
-\end{enumerate}
+Send $\pi_{\text{authid}}(\Authors)$ from S1 to S2: $4000 \times 12 = 48{,}000$ bytes. At S2, compute $\Books \lsj \Authors$: the number of surviving Books rows is $\min(21{,}053,\, 50{,}000) = 21{,}053$. Send these back to S1: $21{,}053 \times 400 = 8{,}421{,}200$ bytes. Perform the full join on S1 and send the result to S4: $21{,}053 \times 88 = 1{,}852{,}664$ bytes.
 \[
   48{,}000 + 8{,}421{,}200 + 1{,}852{,}664 = \mathbf{10{,}321{,}864\ \text{bytes}}
 \]
 
 \medskip
 
-\textbf{Strategy 5 — Semi-join in opposite direction: send \Books.author\ to Site 1, filter \Authors, ship back to Site 2, join, result to Site 4:}
+\textbf{Strategy 5: Semi-join from Books to Authors.}
 
-\begin{enumerate}[nosep,label=\arabic*.]
-  \item Send $\pi_{\text{author}}(\Books)$ from S2 to S1: $50{,}000 \times 10 = 500{,}000$ bytes.
-  \item $\Authors \lsj \Books$: $\min(21{,}053,\, 4{,}000) = 4{,}000$ Authors rows survive
-        (the join result exceeds $|\Authors|$, so all Authors are retained).
-        Send back to S2: $4{,}000 \times 450 = 1{,}800{,}000$ bytes.
-  \item Full join on S2; send result to S4: $21{,}053 \times 88 = 1{,}852{,}664$ bytes.
-\end{enumerate}
+Send $\pi_{\text{author}}(\Books)$ from S2 to S1: $50{,}000 \times 10 = 500{,}000$ bytes. At S1, compute $\Authors \lsj \Books$: the number of surviving Authors rows is $\min(21{,}053,\, 4{,}000) = 4{,}000$ (the join result exceeds $|\Authors|$, so all Authors are retained). Send these back to S2: $4{,}000 \times 450 = 1{,}800{,}000$ bytes. Perform the full join on S2 and send the result to S4: $21{,}053 \times 88 = 1{,}852{,}664$ bytes.
 \[
   500{,}000 + 1{,}800{,}000 + 1{,}852{,}664 = \mathbf{4{,}152{,}664\ \text{bytes}}
 \]
@@ -183,30 +172,30 @@ Result desired at \textbf{Site 4}. Join selectivity: $\tfrac{1}{9500}$.
 \toprule
 \textbf{Strategy} & \textbf{Cost (bytes)} & \textbf{Cost (MB)} \\
 \midrule
-1 — Both to S4              & 21{,}800{,}000  & $\approx 20.79$ \\
-2 — Authors to S2 \checkmark & 3{,}652{,}664  & $\approx 3.48$ \\
-3 — Books to S1             & 21{,}852{,}664  & $\approx 20.84$ \\
-4 — Semi-join A$\to$B       & 10{,}321{,}864  & $\approx 9.84$ \\
-5 — Semi-join B$\to$A       &  4{,}152{,}664  & $\approx 3.96$ \\
+1: Both to S4              & 21{,}800{,}000  & $\approx 20.79$ \\
+2: Authors to S2 \checkmark & 3{,}652{,}664  & $\approx 3.48$ \\
+3: Books to S1             & 21{,}852{,}664  & $\approx 20.84$ \\
+4: Semi-join A$\to$B       & 10{,}321{,}864  & $\approx 9.84$ \\
+5: Semi-join B$\to$A       &  4{,}152{,}664  & $\approx 3.96$ \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \textbf{Minimum: Strategy 2} at $\approx 3{,}652{,}664$ bytes.
 
-Note: the semi-join strategies do not help here because the join selectivity is not low enough. The join result ($\approx 21{,}053$ rows) is larger than $|\Authors|$ ($4{,}000$), so Strategy 5 retains all Authors anyway. Strategy 4 ships $42\%$ of \Books\ back, which is far more expensive than simply sending the small \Authors\ table to \Books\ (Strategy 2).
+The semi-join strategies do not help here because the join selectivity is not low enough. The join result ($\approx 21{,}053$ rows) is larger than $|\Authors|$ ($4{,}000$), so Strategy 5 retains all Authors anyway. Strategy 4 ships $42\%$ of \Books\ back, which is far more expensive than simply sending the small \Authors\ table to Site 2 (Strategy 2).
 
 % -----------------------------------------------------------
-\subsection*{Part (a*) — Communication costs with early projection}
+\subsection*{Part (a*): Communication costs with early projection}
 % -----------------------------------------------------------
 
-Since Query 1 only needs \texttt{name} and \texttt{title} in the result, we project each relation to the minimum columns needed before any transfer:
+Since Query 1 only needs \texttt{name} and \texttt{title} in the result, we project each relation to the minimum columns needed before any transfer.
 
-\begin{itemize}[nosep]
-  \item $\pi_{\text{authid},\,\text{name}}(\Authors)$: $12 + 58 = 70$ bytes/row, total $4000 \times 70 = 280{,}000$ bytes.
-  \item $\pi_{\text{author},\,\text{title}}(\Books)$: $10 + 30 = 40$ bytes/row, total $50{,}000 \times 40 = 2{,}000{,}000$ bytes.
-  \item Result record: $58 + 30 = 88$ bytes (unchanged). $21{,}053 \times 88 = 1{,}852{,}664$ bytes.
-\end{itemize}
+Projected \Authors: $\pi_{\text{authid},\,\text{name}}(\Authors)$ has record size $12 + 58 = 70$ bytes/row, total $4000 \times 70 = 280{,}000$ bytes.
+
+Projected \Books: $\pi_{\text{author},\,\text{title}}(\Books)$ has record size $10 + 30 = 40$ bytes/row, total $50{,}000 \times 40 = 2{,}000{,}000$ bytes.
+
+Result record size is unchanged: $58 + 30 = 88$ bytes, total $21{,}053 \times 88 = 1{,}852{,}664$ bytes.
 
 \medskip
 
@@ -225,22 +214,16 @@ Since Query 1 only needs \texttt{name} and \texttt{title} in the result, we proj
   2{,}000{,}000 + 1{,}852{,}664 = \mathbf{3{,}852{,}664\ \text{bytes}}
 \]
 
-\textbf{Strategy 4* (semi-join, project Books before sending back):}
-\begin{enumerate}[nosep,label=\arabic*.]
-  \item $\pi_{\text{authid}}(\Authors) \to \text{S2}$: $48{,}000$ bytes.
-  \item $\pi_{\text{author},\text{title}}(\Books \lsj \Authors) \to \text{S1}$: $21{,}053 \times 40 = 842{,}120$ bytes.
-  \item Result $\to$ S4: $1{,}852{,}664$ bytes.
-\end{enumerate}
+\textbf{Strategy 4*: Semi-join from Authors to Books with projection.}
+
+Send $\pi_{\text{authid}}(\Authors)$ from S1 to S2: $4000 \times 12 = 48{,}000$ bytes. At S2, filter and project: $\pi_{\text{author},\text{title}}(\Books \lsj \Authors)$ yields $21{,}053$ rows at $40$ bytes each, send to S1: $21{,}053 \times 40 = 842{,}120$ bytes. Join on S1, send result to S4: $21{,}053 \times 88 = 1{,}852{,}664$ bytes.
 \[
   48{,}000 + 842{,}120 + 1{,}852{,}664 = \mathbf{2{,}742{,}784\ \text{bytes}}
 \]
 
-\textbf{Strategy 5* (semi-join, project Authors before sending back):}
-\begin{enumerate}[nosep,label=\arabic*.]
-  \item $\pi_{\text{author}}(\Books) \to \text{S1}$: $500{,}000$ bytes.
-  \item $\pi_{\text{authid},\text{name}}(\Authors \lsj \Books) \to \text{S2}$: $4{,}000 \times 70 = 280{,}000$ bytes.
-  \item Result $\to$ S4: $1{,}852{,}664$ bytes.
-\end{enumerate}
+\textbf{Strategy 5*: Semi-join from Books to Authors with projection.}
+
+Send $\pi_{\text{author}}(\Books)$ from S2 to S1: $50{,}000 \times 10 = 500{,}000$ bytes. At S1, filter and project: $\pi_{\text{authid},\text{name}}(\Authors \lsj \Books)$ yields $4{,}000$ rows at $70$ bytes each, send to S2: $4{,}000 \times 70 = 280{,}000$ bytes. Join on S2, send result to S4: $21{,}053 \times 88 = 1{,}852{,}664$ bytes.
 \[
   500{,}000 + 280{,}000 + 1{,}852{,}664 = \mathbf{2{,}632{,}664\ \text{bytes}}
 \]
@@ -254,11 +237,11 @@ Since Query 1 only needs \texttt{name} and \texttt{title} in the result, we proj
 \toprule
 \textbf{Strategy} & \textbf{Cost (bytes)} & \textbf{Cost (MB)} \\
 \midrule
-1* — Both to S4              & 2{,}280{,}000  & $\approx 2.17$ \\
-2* — Authors to S2 \checkmark & 2{,}132{,}664 & $\approx 2.03$ \\
-3* — Books to S1             & 3{,}852{,}664  & $\approx 3.67$ \\
-4* — Semi-join A$\to$B       & 2{,}742{,}784  & $\approx 2.61$ \\
-5* — Semi-join B$\to$A       & 2{,}632{,}664  & $\approx 2.51$ \\
+1*: Both to S4              & 2{,}280{,}000  & $\approx 2.17$ \\
+2*: Authors to S2 \checkmark & 2{,}132{,}664 & $\approx 2.03$ \\
+3*: Books to S1             & 3{,}852{,}664  & $\approx 3.67$ \\
+4*: Semi-join A$\to$B       & 2{,}742{,}784  & $\approx 2.61$ \\
+5*: Semi-join B$\to$A       & 2{,}632{,}664  & $\approx 2.51$ \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -268,7 +251,7 @@ Since Query 1 only needs \texttt{name} and \texttt{title} in the result, we proj
 Early projection significantly reduces all costs. The most dramatic improvement is in strategies that transfer \Books\ (from 20 MB down to 2 MB for the full table, and from 8.4 MB down to 842 KB for the semi-join result in Strategy 4). Strategy 2* still wins: sending the small projected \Authors\ to Site 2 (280 KB) is cheaper than any alternative.
 
 % -----------------------------------------------------------
-\subsection*{Part (b) — Three-way join with Libraries}
+\subsection*{Part (b): Three-way join with Libraries}
 % -----------------------------------------------------------
 
 \textbf{Query 2:}
@@ -282,57 +265,69 @@ Join selectivity for the outer join (\Libraries\ with inner result): $\tfrac{1}{
 
 \textbf{Inner join projection for Query 2:}
 
-The inner join now needs \texttt{library} from \Books\ (to join with \Libraries) and \texttt{name} from \Authors. So:
-\begin{itemize}[nosep]
-  \item $\pi_{\text{authid},\,\text{name}}(\Authors)$: $70$ bytes/row (unchanged).
-  \item $\pi_{\text{author},\,\text{library}}(\Books)$: $10 + 10 = 20$ bytes/row,
-        total $50{,}000 \times 20 = 1{,}000{,}000$ bytes.
-  \item Inner result: $\pi_{\text{name},\,\text{library}}(\Authors \join \Books)$
-        $= 21{,}053$ rows $\times$ $(58 + 10) = 68$ bytes $= 1{,}431{,}604$ bytes.
-  \item Outer result: $21{,}053 \times 10{,}000 \times \tfrac{1}{4000} \approx 52{,}633$ rows (small).
-\end{itemize}
+The inner join now needs \texttt{library} from \Books\ (to join with \Libraries) and \texttt{name} from \Authors.
+
+Projected \Authors: $\pi_{\text{authid},\,\text{name}}(\Authors)$ has record size $70$ bytes/row (unchanged from part~a*).
+
+Projected \Books: $\pi_{\text{author},\,\text{library}}(\Books)$ has record size $10 + 10 = 20$ bytes/row, total $50{,}000 \times 20 = 1{,}000{,}000$ bytes.
+
+Inner result: $\pi_{\text{name},\,\text{library}}(\Authors \join \Books) = 21{,}053$ rows $\times$ $(58 + 10) = 68$ bytes $= 21{,}053 \times 68 = 1{,}431{,}604$ bytes.
+
+Outer result: $21{,}053 \times 10{,}000 \times \tfrac{1}{4000} = \tfrac{210{,}530{,}000}{4000} \approx 52{,}633$ rows.
 
 \medskip
 
-\textbf{Key observation for skipping strategies:}
+\textbf{Key observation:}
 
-The full \Libraries\ table costs $10{,}000 \times 750 = 7{,}500{,}000$ bytes to transfer. Any strategy that ships \Libraries\ to another site will incur at least 7.5 MB just for that step. Since Strategy 1' below costs only $\approx 1{,}280{,}000$ bytes total, all strategies involving moving \Libraries\ can be immediately eliminated.
+The full \Libraries\ table costs $10{,}000 \times 750 = 7{,}500{,}000$ bytes to transfer. Any strategy that ships \Libraries\ to another site incurs at least 7.5~MB just for that step, so all such strategies are dominated. Since \Libraries\ is at Site~3, the outer join must be performed at Site~3, and we only need to determine the cheapest way to get the inner join result there.
 
-\medskip
-
-Since \Libraries\ is at Site 3, the optimal approach is to bring the inner join result to Site 3. The total cost for any strategy is:
-\[
-  \text{inner join cost} + \text{cost to ship inner result to S3} + \text{small (result to S4)}
-\]
-
-The inner result size is fixed at $1{,}431{,}604$ bytes regardless of where it is computed. The exception is if we ship both \Authors\ and \Books\ directly to Site 3, avoiding a separate "inner result transfer" step entirely.
+The final result transfer from S3 to S4 is the same constant for all strategies (it depends only on the outer join cardinality), so it is excluded from the cost comparison below.
 
 \medskip
 
-\textbf{Strategy 1' — Send \Authors\ and \Books\ directly to Site 3, join everything there:}
+\textbf{Strategy 1': Send projected \Authors\ and \Books\ directly to Site 3, join everything there.}
 \[
   \underbrace{4000 \times 70}_{\Authors \to \text{S3}}
   + \underbrace{50{,}000 \times 20}_{\Books \to \text{S3}}
   = 280{,}000 + 1{,}000{,}000 = \mathbf{1{,}280{,}000\ \text{bytes}}
 \]
-(Both inner join and outer join are computed locally on Site 3. Result goes to Site 4: negligible.)
+Both the inner join and the outer join are computed locally on Site~3.
 
 \medskip
 
-\textbf{Strategy 2' — Send \Authors\ to Site 2, compute inner join there, send result to Site 3:}
+\textbf{Strategy 2': Send projected \Authors\ to Site 2, compute inner join there, send inner result to Site 3.}
 \[
-  \underbrace{280{,}000}_{\Authors \to \text{S2}}
-  + \underbrace{1{,}431{,}604}_{\text{inner result} \to \text{S3}}
-  = \mathbf{1{,}711{,}604\ \text{bytes}}
+  \underbrace{4000 \times 70}_{\Authors \to \text{S2}}
+  + \underbrace{21{,}053 \times 68}_{\text{inner result} \to \text{S3}}
+  = 280{,}000 + 1{,}431{,}604 = \mathbf{1{,}711{,}604\ \text{bytes}}
 \]
 
-\textbf{Strategy 4' — Semi-join (as in 4*), compute inner at S1, send result to Site 3:}
+\medskip
+
+\textbf{Strategy 3': Send projected \Books\ to Site 1, compute inner join there, send inner result to Site 3.}
 \[
-  48{,}000 + 21{,}053 \times 20 + 1{,}431{,}604
-  = 48{,}000 + 421{,}060 + 1{,}431{,}604 = \mathbf{1{,}900{,}664\ \text{bytes}}
+  \underbrace{50{,}000 \times 20}_{\Books \to \text{S1}}
+  + \underbrace{21{,}053 \times 68}_{\text{inner result} \to \text{S3}}
+  = 1{,}000{,}000 + 1{,}431{,}604 = \mathbf{2{,}431{,}604\ \text{bytes}}
 \]
 
-Strategies 3', 5' are skipped: Strategy 3' requires sending \Books\ (1 MB) to S1 plus the inner result (1.43 MB) to S3, totalling $\approx 2.43$ MB — worse than Strategy 1'. Strategy 5' requires the \Books\ key transfer (500 KB) which alone is larger than the advantage over Strategy 1'.
+\medskip
+
+\textbf{Strategy 4': Semi-join from Authors to Books, compute inner join at S1, send inner result to Site 3.}
+
+Send $\pi_{\text{authid}}(\Authors)$ from S1 to S2: $4000 \times 12 = 48{,}000$ bytes. At S2, filter and project: $\pi_{\text{author},\text{library}}(\Books \lsj \Authors)$ yields $21{,}053$ rows at $20$ bytes each, send to S1: $21{,}053 \times 20 = 421{,}060$ bytes. Join on S1, send inner result to S3: $21{,}053 \times 68 = 1{,}431{,}604$ bytes.
+\[
+  48{,}000 + 421{,}060 + 1{,}431{,}604 = \mathbf{1{,}900{,}664\ \text{bytes}}
+\]
+
+\medskip
+
+\textbf{Strategy 5': Semi-join from Books to Authors, compute inner join at S2, send inner result to Site 3.}
+
+Send $\pi_{\text{author}}(\Books)$ from S2 to S1: $50{,}000 \times 10 = 500{,}000$ bytes. At S1, compute $\Authors \lsj \Books$: all $4{,}000$ Authors rows survive ($\min(21{,}053,\, 4{,}000) = 4{,}000$). Send $\pi_{\text{authid},\text{name}}(\Authors \lsj \Books)$ to S2: $4{,}000 \times 70 = 280{,}000$ bytes. Join on S2, send inner result to S3: $21{,}053 \times 68 = 1{,}431{,}604$ bytes.
+\[
+  500{,}000 + 280{,}000 + 1{,}431{,}604 = \mathbf{2{,}211{,}604\ \text{bytes}}
+\]
 
 \medskip
 
@@ -343,25 +338,26 @@ Strategies 3', 5' are skipped: Strategy 3' requires sending \Books\ (1 MB) to S1
 \toprule
 \textbf{Strategy} & \textbf{Cost (bytes)} & \textbf{Cost (MB)} \\
 \midrule
-1' — Both to S3 \checkmark & 1{,}280{,}000  & $\approx 1.22$ \\
-2' — Authors to S2, result to S3 & 1{,}711{,}604 & $\approx 1.63$ \\
-4' — Semi-join, result to S3    & 1{,}900{,}664 & $\approx 1.81$ \\
-3', 5' (skipped) & $\geq 2{,}430{,}664$ & $\geq 2.32$ \\
-Any strategy moving Libraries & $\geq 7{,}500{,}000$ & $\geq 7.15$ \\
+1': Both to S3 \checkmark        & 1{,}280{,}000  & $\approx 1.22$ \\
+2': Authors to S2, result to S3  & 1{,}711{,}604  & $\approx 1.63$ \\
+4': Semi-join A$\to$B, result to S3 & 1{,}900{,}664  & $\approx 1.81$ \\
+5': Semi-join B$\to$A, result to S3 & 2{,}211{,}604  & $\approx 2.11$ \\
+3': Books to S1, result to S3    & 2{,}431{,}604  & $\approx 2.32$ \\
+Any strategy moving Libraries    & $\geq 7{,}500{,}000$ & $\geq 7.15$ \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\textbf{Minimum: Strategy 1'} — send both projected \Authors\ and \Books\ directly to Site 3, perform all joins locally there, then ship the small final result to Site 4. Total cost: $\approx 1{,}280{,}000$ bytes.
+\textbf{Minimum: Strategy 1'} at $1{,}280{,}000$ bytes. Send both projected \Authors\ and \Books\ directly to Site~3, perform both the inner join and the outer join locally there, then ship the final result to Site~4.
 
-The key insight: for three-way joins it can be cheaper to ship all smaller tables to the site of the largest table (Site 3 for \Libraries) rather than first computing an intermediate result and then transferring it.
+The key insight: for three-way joins it can be cheaper to ship all smaller tables to the site of the largest table (Site~3 for \Libraries) rather than first computing an intermediate result and then transferring it.
 
 % ============================================================
 \newpage
 \section*{Exercise 2 (Cost of MapReduce) [2 points]}
 % ============================================================
 
-\subsection*{Part (a) — Trace through the algorithm with $k = 2$}
+\subsection*{Part (a): Trace through the algorithm with $k = 2$}
 
 The user-item interaction graph has the following edges (from Figure in the exercise sheet):
 
@@ -376,7 +372,7 @@ $u_1\!\to\!\{i_1,i_2,i_3\},\quad
 
 \medskip
 
-\textbf{Mapper 1 output} (emit $(v, u)$ for each edge $(u, v)$):
+\textbf{Mapper 1 output} (emit $(v, u)$ for each edge $(u, v)$).
 
 \begin{center}
 \begin{tabular}{ll}
@@ -400,7 +396,7 @@ $i_5$ & $u_4$ \\
 
 \medskip
 
-\textbf{Reducer 1 output} (identity reducer — grouped by key):
+\textbf{Reducer 1 output} (identity reducer, grouped by key).
 
 \begin{center}
 \begin{tabular}{ll}
@@ -418,15 +414,9 @@ $i_5$ & $[u_3, u_4]$ \\
 
 \medskip
 
-\textbf{Mapper 2 output} (emit $((u_a, u_b), 1)$ for every pair $u_a < u_b$ sharing item $v$):
+\textbf{Mapper 2 output} (emit $((u_a, u_b), 1)$ for every pair $u_a < u_b$ sharing item $v$).
 
-\begin{itemize}[nosep]
-  \item $i_1$: $[u_1]$ — no pairs.
-  \item $i_2$: $[u_1, u_2]$ — pair $(u_1, u_2)$.
-  \item $i_3$: $[u_1, u_2, u_3]$ — pairs $(u_1,u_2)$, $(u_1,u_3)$, $(u_2,u_3)$.
-  \item $i_4$: $[u_2, u_3, u_4]$ — pairs $(u_2,u_3)$, $(u_2,u_4)$, $(u_3,u_4)$.
-  \item $i_5$: $[u_3, u_4]$ — pair $(u_3, u_4)$.
-\end{itemize}
+For $i_1$ the user list is $[u_1]$, so there are no pairs. For $i_2$ with $[u_1, u_2]$ there is the single pair $(u_1, u_2)$. For $i_3$ with $[u_1, u_2, u_3]$ the pairs are $(u_1,u_2)$, $(u_1,u_3)$, $(u_2,u_3)$. For $i_4$ with $[u_2, u_3, u_4]$ the pairs are $(u_2,u_3)$, $(u_2,u_4)$, $(u_3,u_4)$. For $i_5$ with $[u_3, u_4]$ there is the pair $(u_3, u_4)$.
 
 \begin{center}
 \begin{tabular}{ll}
@@ -447,7 +437,7 @@ $(u_3, u_4)$ & 1 \\
 
 \medskip
 
-\textbf{Reducer 2 output} (sum the values per pair):
+\textbf{Reducer 2 output} (sum the values per pair).
 
 \begin{center}
 \begin{tabular}{ll}
@@ -465,7 +455,7 @@ $(u_3, u_4)$ & 2 \quad $\bigl(CI = \{i_4, i_5\}\bigr)$ \\
 
 \medskip
 
-\textbf{Mapper 3 output} (emit $(u_a, (u_b, s))$ and $(u_b, (u_a, s))$ for each pair):
+\textbf{Mapper 3 output} (emit $(u_a, (u_b, s))$ and $(u_b, (u_a, s))$ for each pair).
 
 \begin{center}
 \begin{tabular}{ll}
@@ -488,18 +478,9 @@ $u_4$ & $(u_3, 2)$ \\
 
 \medskip
 
-\textbf{Reducer 3 output} ($k = 2$: keep top-2 most similar users per user):
+\textbf{Reducer 3 output} ($k = 2$), keep top-2 most similar users per user.
 
-\begin{itemize}[nosep]
-  \item $u_1$: candidates $= \{(u_2,2),(u_3,1)\}$ — both kept (only 2 candidates). \\
-        Output: $((u_1, u_2), 2),\; ((u_1, u_3), 1)$.
-  \item $u_2$: candidates $= \{(u_1,2),(u_3,2),(u_4,1)\}$ — top-2 are $u_1$ and $u_3$ (both score 2). \\
-        Output: $((u_2, u_1), 2),\; ((u_2, u_3), 2)$.
-  \item $u_3$: candidates $= \{(u_1,1),(u_2,2),(u_4,2)\}$ — top-2 are $u_2$ and $u_4$ (both score 2). \\
-        Output: $((u_3, u_2), 2),\; ((u_3, u_4), 2)$.
-  \item $u_4$: candidates $= \{(u_2,1),(u_3,2)\}$ — both kept (only 2 candidates). \\
-        Output: $((u_4, u_3), 2),\; ((u_4, u_2), 1)$.
-\end{itemize}
+For $u_1$, candidates are $\{(u_2,2),(u_3,1)\}$; both are kept (only two candidates). Output: $((u_1, u_2), 2)$ and $((u_1, u_3), 1)$. For $u_2$, candidates are $\{(u_1,2),(u_3,2),(u_4,1)\}$; the top two are $u_1$ and $u_3$ (both score $2$). Output: $((u_2, u_1), 2)$ and $((u_2, u_3), 2)$. For $u_3$, candidates are $\{(u_1,1),(u_2,2),(u_4,2)\}$; the top two are $u_2$ and $u_4$ (both score $2$). Output: $((u_3, u_2), 2)$ and $((u_3, u_4), 2)$. For $u_4$, candidates are $\{(u_2,1),(u_3,2)\}$; both are kept. Output: $((u_4, u_3), 2)$ and $((u_4, u_2), 1)$.
 
 \begin{center}
 \begin{tabular}{ll}
@@ -519,45 +500,35 @@ $(u_4, u_2)$ & 1 \\
 \end{center}
 
 % -----------------------------------------------------------
-\subsection*{Part (b) — Cost analysis per stage}
+\subsection*{Part (b): Cost analysis per stage}
 % -----------------------------------------------------------
 
 We express costs in terms of graph properties. Let $|U|$ = number of users, $|V|$ = number of items, $|E|$ = number of edges (user-item interactions). $\deg(v)$ = degree of item $v$ (number of users connected to it). $CI(u_1,u_2)$ = set of common items of users $u_1, u_2$. $S(u)$ = set of users sharing at least one item with $u$.
 
 \medskip
 
-\textbf{Stage 1 (Mapper 1 / Reducer 1):}
-\begin{itemize}[nosep]
-  \item \textbf{Communication cost}: $|E|$ — each edge $(u,v)$ is emitted exactly once as $(v,u)$. The identity reducer passes all pairs through unchanged.
-  \item \textbf{Replication rate}: $1$ — each edge produces exactly one key-value pair in the mapper output.
-  \item \textbf{Reducer size}: $\deg(v)$ for the reducer handling item $v$ (it receives one value per user connected to $v$). Maximum reducer size = $\max_{v \in V} \deg(v)$.
-\end{itemize}
+\textbf{Stage 1 (Mapper 1 / Reducer 1).}
+
+\textbf{Communication cost} is $|E|$: each edge $(u,v)$ is emitted exactly once as $(v,u)$, and the identity reducer passes all pairs through unchanged. \textbf{Replication rate} is $1$: each edge produces exactly one key-value pair in the mapper output. \textbf{Reducer size} for the reducer handling item $v$ is $\deg(v)$ (one value per user connected to $v$); the maximum reducer size is $\max_{v \in V} \deg(v)$.
 
 \medskip
 
-\textbf{Stage 2 (Mapper 2 / Reducer 2):}
-\begin{itemize}[nosep]
-  \item \textbf{Communication cost}: $\displaystyle\sum_{v \in V} \binom{\deg(v)}{2} = \sum_{v \in V} \frac{\deg(v)(\deg(v)-1)}{2}$ — for each item $v$, all user pairs that share $v$ are emitted.
-  \item \textbf{Replication rate}: $\displaystyle\frac{\sum_{v \in V} \binom{\deg(v)}{2}}{|E|}$ — mapper input size is $|E|$ (output of Stage 1), mapper output is $\sum_v \binom{\deg(v)}{2}$ pairs.
-  \item \textbf{Reducer size}: $|CI(u_1, u_2)|$ for the reducer handling pair $(u_1, u_2)$ — it receives one 1 per common item of $u_1$ and $u_2$. Maximum reducer size = $\max_{u_1,u_2} |CI(u_1,u_2)|$.
-\end{itemize}
+\textbf{Stage 2 (Mapper 2 / Reducer 2).}
+
+\textbf{Communication cost} is $\displaystyle\sum_{v \in V} \binom{\deg(v)}{2} = \sum_{v \in V} \frac{\deg(v)(\deg(v)-1)}{2}$: for each item $v$, all user pairs that share $v$ are emitted. \textbf{Replication rate} is $\displaystyle\frac{\sum_{v \in V} \binom{\deg(v)}{2}}{|E|}$ (mapper input size is $|E|$, the output of Stage 1; mapper output is $\sum_v \binom{\deg(v)}{2}$ pairs). \textbf{Reducer size} for the reducer handling pair $(u_1, u_2)$ is $|CI(u_1, u_2)|$ (one value per common item of $u_1$ and $u_2$); the maximum is $\max_{u_1,u_2} |CI(u_1,u_2)|$.
 
 \medskip
 
-\textbf{Stage 3 (Mapper 3 / Reducer 3):}
-\begin{itemize}[nosep]
-  \item Let $P$ = number of unique user pairs with at least one common item (number of edges in the similarity graph before top-$k$ pruning).
-  \item \textbf{Communication cost}: $2P$ — each pair $(u_1, u_2, s)$ is emitted twice: once keyed by $u_1$ and once by $u_2$. Equivalently, $P = |\{(u_1,u_2) : CI(u_1,u_2) \neq \emptyset\}|$.
-  \item \textbf{Replication rate}: $2$ — each pair from Reducer 2 generates exactly 2 mapper outputs.
-  \item \textbf{Reducer size}: $|S(u)|$ for the reducer handling user $u$ — it receives one candidate per user sharing at least one item with $u$. Maximum reducer size = $\max_{u \in U} |S(u)|$.
-\end{itemize}
+\textbf{Stage 3 (Mapper 3 / Reducer 3).}
+
+Let $P$ denote the number of unique user pairs with at least one common item (edges in the similarity graph before top-$k$ pruning). \textbf{Communication cost} is $2P$: each pair $(u_1, u_2, s)$ is emitted twice, once keyed by $u_1$ and once by $u_2$. Equivalently, $P = |\{(u_1,u_2) : CI(u_1,u_2) \neq \emptyset\}|$. \textbf{Replication rate} is $2$: each pair from Reducer 2 generates exactly two mapper outputs. \textbf{Reducer size} for the reducer handling user $u$ is $|S(u)|$ (one candidate per user sharing at least one item with $u$); the maximum is $\max_{u \in U} |S(u)|$.
 
 % ============================================================
 \newpage
 \section*{Exercise 3 (MapReduce Algorithms) [2 points]}
 % ============================================================
 
-\subsection*{Part (a) — MapReduce for $F_1(X, Y, Z)$}
+\subsection*{Part (a): MapReduce for $F_1(X, Y, Z)$}
 
 \[
   F_1(X, Y, Z) = \gamma_{b}^{SUM(a)}\!\bigl(\sigma_{a > b}(X) \;-\; \pi_{a,b}(Y \lsj Z)\bigr)
@@ -565,55 +536,34 @@ We express costs in terms of graph properties. Let $|U|$ = number of users, $|V|
 
 Relations: $X(a,b)$, $Y(a,b,c)$, $Z(b,c,d)$. Set semantics (no duplicates).
 
-The computation requires three logical steps:
-\begin{enumerate}[nosep,label=\arabic*.]
-  \item Compute the semi-join $Y \lsj Z$ (retain tuples of $Y$ that have a matching $(b,c)$ in $Z$).
-  \item Compute the set difference $\sigma_{a>b}(X) - \pi_{a,b}(Y \lsj Z)$.
-  \item Group by $b$ and sum $a$.
-\end{enumerate}
+The computation requires three logical steps: compute the semi-join $Y \lsj Z$ (retain tuples of $Y$ that have a matching $(b,c)$ in $Z$); compute the set difference $\sigma_{a>b}(X) - \pi_{a,b}(Y \lsj Z)$; then group by $b$ and sum $a$.
 
 \medskip
 
-\textbf{Round 1 — Compute $\pi_{a,b}(Y \lsj Z)$ and prepare $\sigma_{a>b}(X)$:}
+\textbf{Round 1: Compute $\pi_{a,b}(Y \lsj Z)$ and prepare $\sigma_{a>b}(X)$.}
 
-\textit{Mapper:}
-\begin{itemize}[nosep]
-  \item For each tuple $(a, b, c) \in Y$: emit key $(b, c)$, value $(\texttt{Y}, a, b)$.
-  \item For each tuple $(b, c, d) \in Z$: emit key $(b, c)$, value $(\texttt{Z})$.
-  \item For each tuple $(a, b) \in X$ with $a > b$: emit key $(\texttt{X}, a, b)$, value $(\texttt{X}, a, b)$.
-\end{itemize}
+\textit{Mapper.} For each tuple $(a, b, c) \in Y$, emit key $(b, c)$ and value $(\texttt{Y}, a, b)$. For each tuple $(b, c, d) \in Z$, emit key $(b, c)$ and value $(\texttt{Z})$. For each tuple $(a, b) \in X$ with $a > b$, emit key $(\texttt{X}, a, b)$ and value $(\texttt{X}, a, b)$.
 
-\textit{Reducer (for keys of the form $(b,c)$):}
-\begin{itemize}[nosep]
-  \item If the value list contains at least one \texttt{Z} entry, emit $(\texttt{YsZ}, a, b)$ for each \texttt{Y} entry $(a, b)$ in the list (these are tuples from $\pi_{a,b}(Y \lsj Z)$).
-  \item Keys of the form $(\texttt{X}, a, b)$ are passed through as-is (identity for $X$ tuples).
-\end{itemize}
+\textit{Reducer.} For keys of the form $(b,c)$: if the value list contains at least one \texttt{Z} entry, emit $(\texttt{YsZ}, a, b)$ for each \texttt{Y} entry $(a, b)$ in the list (these are tuples from $\pi_{a,b}(Y \lsj Z)$). Keys of the form $(\texttt{X}, a, b)$ are passed through as-is (identity for $X$ tuples).
 
 \medskip
 
-\textbf{Round 2 — Compute set difference and group-by aggregation:}
+\textbf{Round 2: Compute set difference.}
 
-\textit{Mapper:}
-\begin{itemize}[nosep]
-  \item For each \texttt{X}-tuple $(a, b)$ from Round 1: emit key $(a, b)$, value $(\texttt{X})$.
-  \item For each \texttt{YsZ}-tuple $(a, b)$ from Round 1: emit key $(a, b)$, value $(\texttt{YsZ})$.
-\end{itemize}
+\textit{Mapper.} For each \texttt{X}-tuple $(a, b)$ from Round 1, emit key $(a, b)$ and value $(\texttt{X})$. For each \texttt{YsZ}-tuple $(a, b)$ from Round 1, emit key $(a, b)$ and value $(\texttt{YsZ})$.
 
-\textit{Reducer:}
-\begin{itemize}[nosep]
-  \item For each key $(a, b)$: if the value list contains \texttt{X} but no \texttt{YsZ}, emit $(b,\, a)$ — this tuple is in the set difference. If both tags are present, the tuple is excluded (set difference removes it).
-\end{itemize}
+\textit{Reducer.} For each key $(a, b)$: if the value list contains \texttt{X} but no \texttt{YsZ}, emit $(b,\, a)$ (this tuple is in the set difference). If both tags are present, the tuple is excluded.
 
 \medskip
 
-\textbf{Round 3 — Group by $b$ and compute $SUM(a)$:}
+\textbf{Round 3: Group by $b$ and compute $SUM(a)$.}
 
-\textit{Mapper:} For each surviving tuple $(b, a)$ from Round 2: emit key $b$, value $a$.
+\textit{Mapper.} For each surviving tuple $(b, a)$ from Round 2, emit key $b$ and value $a$.
 
-\textit{Reducer:} For each key $b$: emit $(b,\; \sum_{\text{values}} a)$.
+\textit{Reducer.} For each key $b$, emit $(b,\; \sum_{\text{values}} a)$.
 
 % -----------------------------------------------------------
-\subsection*{Part (b) — MapReduce for min-max row normalization}
+\subsection*{Part (b): MapReduce for min-max row normalization}
 % -----------------------------------------------------------
 
 Given matrix $M$ with $I$ rows and $J$ columns:
@@ -624,31 +574,19 @@ Given matrix $M$ with $I$ rows and $J$ columns:
 
 \medskip
 
-\textbf{Round 1 — Compute row min and max:}
+\textbf{Round 1: Compute row min and max.}
 
-\textit{Mapper:} For each entry $M_{ij}$: emit key $i$, value $(j, M_{ij})$.
+\textit{Mapper.} For each entry $M_{ij}$, emit key $i$ and value $(j, M_{ij})$.
 
-\textit{Reducer:} For each row $i$, collect all values $\{(j, M_{ij})\}$.
-\begin{itemize}[nosep]
-  \item Compute $\min_i = \min_j M_{ij}$ and $\max_i = \max_j M_{ij}$.
-  \item Emit $(i,\, \min_i,\, \max_i)$.
-\end{itemize}
+\textit{Reducer.} For each row $i$, collect all values $\{(j, M_{ij})\}$, compute $\min_i = \min_j M_{ij}$ and $\max_i = \max_j M_{ij}$, and emit $(i,\, \min_i,\, \max_i)$.
 
 \medskip
 
-\textbf{Round 2 — Normalize each entry:}
+\textbf{Round 2: Normalize each entry.}
 
-\textit{Mapper (input: both $M$ and the output of Round 1):}
-\begin{itemize}[nosep]
-  \item For each entry $M_{ij}$: emit key $i$, value $(\texttt{entry},\, j,\, M_{ij})$.
-  \item For each $(i, \min_i, \max_i)$ from Round 1: emit key $i$, value $(\texttt{stats},\, \min_i,\, \max_i)$.
-\end{itemize}
+\textit{Mapper} (input: both $M$ and the output of Round 1). For each entry $M_{ij}$, emit key $i$ and value $(\texttt{entry},\, j,\, M_{ij})$. For each $(i, \min_i, \max_i)$ from Round 1, emit key $i$ and value $(\texttt{stats},\, \min_i,\, \max_i)$.
 
-\textit{Reducer:} For each row $i$, retrieve $\min_i$ and $\max_i$ from the \texttt{stats} entry, then for each \texttt{entry} $(j, M_{ij})$:
-\begin{itemize}[nosep]
-  \item If $\max_i = \min_i$: emit $(i,\, j,\, 0)$.
-  \item Otherwise: emit $\left(i,\, j,\;\dfrac{M_{ij} - \min_i}{\max_i - \min_i}\right)$.
-\end{itemize}
+\textit{Reducer.} For each row $i$, retrieve $\min_i$ and $\max_i$ from the \texttt{stats} entry, then for each \texttt{entry} $(j, M_{ij})$: if $\max_i = \min_i$, emit $(i,\, j,\, 0)$; otherwise emit $\left(i,\, j,\;\dfrac{M_{ij} - \min_i}{\max_i - \min_i}\right)$.
 
 % ============================================================
 \newpage
